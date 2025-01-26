@@ -1,0 +1,46 @@
+version: "3"
+
+# Usage examples:
+#  - `cd unstuck_etl/src/lambdas`
+#  - Python-based lambdas: `task zip_python PATH=DynamoDBToS3Export/`
+#  - Node.js-based lambdas: `task zip_nodejs PATH=getUserProfile/`
+# Script accepts the path to the directory containing the Python or Node.js files (`PATH=...`)
+
+# cd unstuck_etl/src/lambdas
+# $ tree .  -L 1
+# .
+# ├── 📁DynamoDBToS3Export
+# ├── README.MD
+# ├── Taskfile.yml
+# ├── 📁addUserProfile
+# ├── 📁getIntervention
+# ├── 📁getUserProfile
+# ├── 📁home
+# └── 📁testConnect
+#
+# 7 directories, 2 files
+
+
+tasks:
+  # Task to create a zip for Python Lambda
+  zip_python:
+    desc: "Create zip for Python Lambda"
+    cmds:
+      - |
+        dir="{{.PATH}}"
+        zip_file="${dir%/}.zip"
+        cd "$dir"
+        zip -r "$zip_file" ./*.py
+    silent: false
+
+  # Task to create a zip for Node.js Lambda
+  zip_nodejs:
+    desc: "Create zip for Node.js Lambda"
+    cmds:
+      - |
+        dir="{{.PATH}}"
+        zip_file="${dir%/}.zip"
+        cd "$dir"
+        if [ -f "package-lock.json" ]; then npm ci --production; else npm install --production; fi
+        zip -r "$zip_file" index.js node_modules/ -x "*-lock.json" -x "*.lock"
+    silent: false
