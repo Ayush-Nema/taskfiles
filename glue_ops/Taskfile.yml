@@ -1,0 +1,81 @@
+version: '3'
+
+silent: false
+output: group
+
+# Note: To the Taskfile.yml with verbosity: task -v <task-name>
+
+env:
+  AWS_ACCOUNT: 1234567890
+  REGION: us-east-1
+  GLUE_NOTEBOOK: GlueDataProcessing  # serves as the glue job name
+  GLUE_S3_BUCKET: project-glue-script
+  RAW_BUCKET: project-raw
+  PROCESSED_BUCKET: project-processed
+  GLUE_SCRIPT_S3_DIRPATH: s3://$GLUE_S3_BUCKET/scripts/
+  GLUE_SCRIPT_S3_PATH: s3://$GLUE_S3_BUCKET/scripts/$GLUE_NOTEBOOK.py
+  AWS_PROFILE: mac-dev
+
+tasks:
+  save-script:
+    vars:
+      script_path: "{{.LOCAL_SCRIPT_PATH | default \"UnstuckBanditDataProcessing.py\"}}"
+    cmds:
+      - echo "Saving the Glue script to S3..."
+      - sh -c 'echo aws s3 cp "{{.script_path}}" "$(eval echo $GLUE_SCRIPT_S3_DIRPATH)" --profile $AWS_PROFILE'
+      - sh -c 'aws s3 cp "{{.script_path}}" "$(eval echo $GLUE_SCRIPT_S3_DIRPATH)" --profile $AWS_PROFILE'
+    summary: "Save Glue script to S3"
+    aliases:
+      - save
+      - save-remote
+    silent: false
+
+  trigger-glue:
+    cmds:
+      - echo "Triggering Glue Job..."
+      - sh -c 'echo aws glue start-job-run --profile $AWS_PROFILE --job-name $GLUE_NOTEBOOK --arguments "{\"--scriptLocation\":\"$GLUE_SCRIPT_S3_DIRPATH\"}"'
+      - sh -c 'aws glue start-job-run --profile $AWS_PROFILE --job-name $GLUE_NOTEBOOK --arguments "{\"--scriptLocation\":\"$(eval echo $GLUE_SCRIPT_S3_PATH)\"}"'
+    summary: "Triggered Glue Job"
+    aliases:
+      - run
+    silent: true
+
+  purge-s3:
+    cmds:
+      - echo "Purging S3 bucket → ${PROCESSED_BUCKET}..."
+      - aws s3 rm s3://$PROCESSED_BUCKET/metadata --recursive --profile $AWS_PROFILE
+      - aws s3 rm s3://$PROCESSED_BUCKET/processed_data --recursive --profile $AWS_PROFILE
+      - cmd: aws s3 rm s3://$PROCESSED_BUCKET/processed_data_$folder$ --recursive --profile $AWS_PROFILE
+        ignore_error: true
+    silent: false
+
+  view-s3:
+    vars:
+      bucket_name: "{{.BUCKET_NAME | default \"unstuck-bandit-raw\"}}"
+    cmds:
+      - echo "Listing S3 bucket → "{{.bucket_name}}"..."
+      - aws s3 ls "{{.bucket_name}}" --recursive --profile $AWS_PROFILE
+    silent: false
+
+  view-s3-policies:
+    desc: "View S3 bucket policies and ACLs"
+    vars:
+      bucket_name: "{{.BUCKET_NAME | default \"unstuck-bandit-raw\"}}"
+    cmds:
+      - echo "Viewing S3 bucket policies"
+      - cmd: aws s3api get-bucket-policy --bucket "{{.bucket_name}}" --profile $AWS_PROFILE
+        ignore_error: true
+      - echo "Viewing S3 bucket ACLs"
+      - aws s3api get-bucket-acl --bucket "{{.bucket_name}}" --profile $AWS_PROFILE
+    silent: true
+
+  multi-command:
+    deps:
+      - save-script
+    cmds:
+      - task: purge-s3
+      - task: trigger-glue
+    summary: "Save script, purge S3, and trigger Glue job"
+    silent: true
+    aliases:
+      - run-all
