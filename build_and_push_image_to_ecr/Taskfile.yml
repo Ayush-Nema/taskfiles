@@ -1,0 +1,49 @@
+version: '3'
+
+silent: false
+# output: group
+
+env:
+  IMAGE_TAG: lambda_fargate
+  AWS_ACCOUNT: 1234567890
+  REGION: us-east-1
+  DOCKERFILE_PATH: docker/Dockerfile_aws_image_fargate
+  ECR_REPO_NAME: semantic_seg
+
+tasks:
+  ecr-login:
+    cmds:
+      - echo "Logging into ECR..."
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $AWS_ACCOUNT.dkr.ecr.$REGION.amazonaws.com
+    summary: "Login to ECR"
+    silent: false
+
+  build:
+    cmds:
+      - echo "Building the Docker image..."
+      - docker build --platform linux/amd64 --no-cache -f $DOCKERFILE_PATH -t $ECR_REPO_NAME:$IMAGE_TAG .
+    summary: "Build the docker image"
+    silent: false
+
+  tag:
+    cmds:
+      - echo "Tagging the image..."
+      - docker tag $ECR_REPO_NAME:$IMAGE_TAG $AWS_ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPO_NAME:$IMAGE_TAG
+    summary: "Tag the image"
+    silent: false
+
+  docker-push:
+    cmds:
+      - echo "Pushing the image to ECR..."
+      - docker push $AWS_ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPO_NAME:$IMAGE_TAG
+    summary: "Push the image to ECR"
+    silent: false
+
+  multi-command:
+    deps:
+      - ecr-login
+    cmds:
+      - task: build
+      - task: tag
+      - task: docker-push
+    summary: "Build, tag and push the image"
