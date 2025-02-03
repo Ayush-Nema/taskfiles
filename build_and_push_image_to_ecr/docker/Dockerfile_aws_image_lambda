@@ -1,0 +1,28 @@
+FROM public.ecr.aws/lambda/python:3.10
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Update package list and install required libraries
+RUN yum update -y && \
+    yum install -y \
+    mesa-libGL \
+    glib2 \
+    vim \
+    aws-cli \
+    && yum clean all
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
+    pip3 install --no-cache-dir opencv-python==4.9.0.80 pynvml==11.5.0 boto3==1.34.113
+
+# Copy the scripts from local to the working directory within the container
+COPY ./scripts/ /var/task
+
+# Execute the python script to download the checkpoint file
+RUN python3 /var/task/download_checkpoint.py
+
+# Set the working directory
+WORKDIR /var/task
+
+# Setting the entrypoint for execution
+CMD [ "lambda_function.lambda_handler" ]
