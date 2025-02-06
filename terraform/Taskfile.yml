@@ -1,0 +1,81 @@
+version: '3'
+
+output: interleaved
+
+env:
+  AWS_ACCOUNT: 12345
+
+vars:
+  TF_PLAN_FILE: tf-plan.out
+
+tasks:
+  clean-tf-files:
+    desc: "Clean up Terraform files"
+    cmds:
+      - echo "Cleaning up Terraform files..."
+      - rm -rf .terraform || true
+      - rm -rf terraform.tfstate || true
+      - rm -rf terraform.tfstate.backup || true
+      - rm .terraform.lock.hcl || true
+      - rm tf-plan*.out || true
+      - echo "Cleanup complete!"
+    silent: false
+    aliases:
+      - purge
+
+  tf-init:
+    desc: "Initialize Terraform"
+    cmds:
+      - echo "Initializing Terraform..."
+      - terraform init
+    silent: false
+    aliases:
+      - init
+
+  tf-plan:
+    desc: "Plan Terraform"
+    cmds:
+      - echo "Planning Terraform..."
+      - terraform plan -out={{.TF_PLAN_FILE}}
+    silent: false
+    aliases:
+      - plan
+
+  tf-apply:
+    desc: "Apply Terraform"
+    cmds:
+      - echo "Applying Terraform..."
+      - terraform apply {{.TF_PLAN_FILE}}
+    silent: false
+    aliases:
+      - apply
+
+  tf-destroy:
+    desc: "Destroy Terraform"
+    cmds:
+      - echo "Destroying Terraform..."
+      - terraform destroy
+    silent: false
+    aliases:
+      - destroy
+
+  tf-selective-destroy:
+    desc: "Destroy Terraform resources selectively"
+    cmds:
+      - echo "Destroying Terraform resources selectively..."
+      - terraform destroy -target=aws_s3_bucket.state_bucket -target=aws_dynamodb_table.state_lock_table
+    silent: false
+    aliases:
+      - selective-destroy
+
+  tf-auto:
+    deps:
+      - task: clean-tf-files
+    cmds:
+      - echo "Running the shell script for executing TF commands..."
+      - sh ./run_tf.sh
+    summary: "Runs the run_tf.sh shell script for running multiple terraform commands"
+    silent: false
+    aliases:
+      - auto
+
