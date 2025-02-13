@@ -1,0 +1,19 @@
+{
+  "cluster": "segmentation",
+  "serviceName": "segmentation-service",
+  "taskDefinition": "segmentation_fargate",
+  "desiredCount": 1,
+  "launchType": "FARGATE",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": [
+        "subnet-029...98d",
+        "subnet-046...668"
+      ],
+      "securityGroups": [
+        "sg-065...1f3"
+      ],
+      "assignPublicIp": "ENABLED"
+    }
+  }
+}
