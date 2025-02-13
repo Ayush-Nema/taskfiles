@@ -1,0 +1,48 @@
+version: '3'
+
+silent: false
+dotenv: [ '.env' ]
+output: group
+#output:
+#  group:
+#    begin: '::group::{{.TASK}}'
+#    end: '::endgroup::'
+
+tasks:
+  create-cluster:
+    aliases: [ create-c ]
+    cmds:
+      - echo "Creating ECS cluster..."
+      - |
+        aws ecs create-cluster \
+          --cluster-name $CLUSTER_NAME \
+          --tags key=$TAG_KEY,value=$TAG_VALUE
+
+      - echo "Cluster creation command executed."
+    env:
+      TAG_KEY: project
+      TAG_VALUE: visual_sonar
+    silent: false
+    summary: Creating a new ECS cluster
+
+
+  delete-cluster:
+    aliases: [ del-c ]
+    prompt: This will delete the ECS cluster!! Do you want to continue?
+    cmds:
+      - aws ecs delete-cluster --cluster $CLUSTER_NAME
+
+
+  create-task-definition:
+    aliases: [ task-defn ]
+    cmds:
+      - aws ecs register-task-definition --cli-input-json file://$TASK_DEFN_FILE
+
+  deregister-task-definition:
+    aliases: [ deregister-td ]
+    prompt: You are about to deregister a task definition. Do you want to continue?
+    env:
+      DEFN_NAME: segmentation_fargate
+      DEFN_VERSION: 2
+    cmds:
+      - aws ecs deregister-task-definition --task-definition $DEFN_NAME:$DEFN_VERSION
