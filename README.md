@@ -22,6 +22,11 @@ brew install go-task
 
 Follow the link for more instructions options across various OS platforms: https://taskfile.dev/installation/
 
+## Sample run command
+```commandline
+task <name-of-task>
+```
+
 ## Documentation
 
 - Usage instructions: https://taskfile.dev/usage/
