@@ -1,0 +1,52 @@
+version: "3"
+
+silent: false
+# output: group
+
+env:
+  REGION: us-east-1
+  S3_BUCKET_NAME: ops-chatbot-data
+  DIR: cleaned_md
+  MULTIPLE_DIRS: "raw_md processed_data logs backups"
+
+tasks:
+  create-s3-bucket:
+    aliases: [ create-bucket ]
+    cmds:
+      - |
+        # Check if bucket exists
+        if ! aws s3api head-bucket --bucket "{{.S3_BUCKET_NAME}}" 2>/dev/null; then
+          echo "Creating S3 bucket {{.S3_BUCKET_NAME}}..."
+          aws s3api create-bucket \
+            --bucket "{{.S3_BUCKET_NAME}}" \
+            --region "{{.REGION}}"
+          echo "S3 bucket {{.S3_BUCKET_NAME}} created successfully"
+        else
+          echo "S3 bucket {{.S3_BUCKET_NAME}} already exists"
+        fi
+    summary: "Create S3 bucket"
+
+  create-directory:
+    aliases: [ create-dir ]
+    cmds:
+      - echo "Creating directory {{.DIR}} in {{.S3_BUCKET_NAME}} bucket"
+      - |
+        aws s3api put-object \
+          --bucket "{{.S3_BUCKET_NAME}}" \
+          --key "{{.DIR}}/"
+      - echo "Directory {{.DIR}} created."
+    summary: "Create a single directory in S3 bucket"
+
+
+  create-multiple-directories:
+    aliases: [ create-multi-dirs ]
+    cmds:
+      - echo "Creating directories: {{.MULTIPLE_DIRS}} in {{.S3_BUCKET_NAME}} bucket"
+      - |
+        for d in {{.MULTIPLE_DIRS}}; do
+          aws s3api put-object \
+            --bucket "{{.S3_BUCKET_NAME}}" \
+            --key "$d/"
+          echo "Directory $d created."
+        done
+    summary: "Create multiple directories in S3 bucket"
